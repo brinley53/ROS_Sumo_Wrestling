@@ -26,7 +26,7 @@ from geometry_msgs.msg import Twist
 
 # TODO Create a proportional constant applied to speed when turning based on how far centroid is from center (set to around 0.5/100 to start)
 TURNING_SPEED = 0.5/100;
-MOVING_SPEED = 0.1/100;
+MOVING_SPEED = 0.1;
 
 class ColorTracking(Node):
     def __init__(self, name):
@@ -40,7 +40,7 @@ class ColorTracking(Node):
             Image,
             'ascamera/camera_publisher/rgb0/image',
             self.listener_callback,
-            10)
+            1)
 
         # TODO: Initialize conneciton between ROS 2 and OpenCV
         self.bridge = CvBridge()
@@ -62,34 +62,42 @@ class ColorTracking(Node):
         #self.display_with_matplotlib( <image_var> )
 
         # TODO Convert BGR to LAB for easier processing
-        rgb_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)
+        lab_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2LAB)
 
-        # Optional: Add blurring step to remove noise from image
+        # Optional: Add blurring step to remove noise from 
 
         # TODO Define range of color in LAB with lower and upper thresholds
-        lower_bound = np.array([190, 150, 0])
-        upper_bound = np.array([255, 190, 190])
+        lower_bound = np.array([80, 150, 0])
+        upper_bound = np.array([170, 210, 215])
 
         # TODO Create a binary mask of the selected color range
         # Apply the mask to the original image (we techincally only need this for our viewing purposes)
-        mask_hsv = cv2.inRange(rgb_frame, lower_bound, upper_bound)
+        mask_hsv = cv2.inRange(lab_frame, lower_bound, upper_bound)
 
         # Get the color's centroid x and y components ( we compute this in a custom function below )
         centroid_x, centroid_y = self.get_color_centroid(mask_hsv)
+        self.display_with_matplotlib(mask_hsv)
         
         twist = Twist()
         
         if centroid_x != None and centroid_y != None:
 	        # TODO Move depending on centroid location
 	        
-	        twist.angular.z = centroid_x * TURNING_SPEED
-	        #twist.linear.x = (1 - centroid_y) * MOVING_SPEED
+	        image_center_x = current_frame.shape[1] // 2
+	        error_x = centroid_x - image_center_x
+	        if error_x < 0:
+	             twist.angular.z = abs(error_x) * TURNING_SPEED
+	        elif error_x > 0:
+	             twist.angular.z = -abs(error_x) * TURNING_SPEED
+	        
+	        twist.linear.x = MOVING_SPEED
 
 	        # This section shuold end with something like 
 	        self.cmd_vel.publish(twist)
         else:
 	        twist.linear.x = 0.0
 	        twist.angular.z = 0.0
+	        self.cmd_vel.publish(twist)
         
 
         
