@@ -27,6 +27,7 @@ from geometry_msgs.msg import Twist
 # TODO Create a proportional constant applied to speed when turning based on how far centroid is from center (set to around 0.5/100 to start)
 TURNING_SPEED = 0.5/100;
 MOVING_SPEED = 0.1;
+WALL_DISTANCE = 0.5; #closest distance we want to ever be from wall
 
 class ColorTracking(Node):
     def __init__(self, name):
@@ -42,8 +43,15 @@ class ColorTracking(Node):
             self.listener_callback,
             1)
 
+	self.lidar_subscription = self.create_subscription(
+		LaserScan,
+		'scan',
+		self.lidar_callback,
+		1)
+
         # TODO: Initialize conneciton between ROS 2 and OpenCV
         self.bridge = CvBridge()
+	self.closest_distance = float('inf')
 
         # -- Matplotlib Setup for debugging --
         
@@ -52,6 +60,9 @@ class ColorTracking(Node):
         self.fig, self.ax = plt.subplots()
 
         # ------------------------------------
+	
+    def lidar_callback(self, data):
+	self.closest_distance = min(data.ranges)
         
     def listener_callback(self, data):
         # TODO Convert ROS2 Image msg type to OpenCV img
@@ -79,25 +90,23 @@ class ColorTracking(Node):
         self.display_with_matplotlib(mask_hsv)
         
         twist = Twist()
-        
-        if centroid_x != None and centroid_y != None:
+	    
+        if self.closest_distance < WALL_DISTANCE:
+		twist.linear.x = 0.0
+		twist.angular.z = 0.5
+	elif centroid_x != None and centroid_y != None:
 	        # TODO Move depending on centroid location
 	        
 	        image_center_x = current_frame.shape[1] // 2
 	        error_x = centroid_x - image_center_x
-	        if error_x < 0:
-	             twist.angular.z = abs(error_x) * TURNING_SPEED
-	        elif error_x > 0:
-	             twist.angular.z = -abs(error_x) * TURNING_SPEED
-	        
+	        twist.angular.z = -error_x * TURNING_SPEED	        
 	        twist.linear.x = MOVING_SPEED
-
-	        # This section shuold end with something like 
-	        self.cmd_vel.publish(twist)
         else:
 	        twist.linear.x = 0.0
 	        twist.angular.z = 0.0
-	        self.cmd_vel.publish(twist)
+
+	# This section shuold end with something like 
+	self.cmd_vel.publish(twist)
         
 
         
