@@ -23,6 +23,8 @@ MIN_CONTOUR_SIZE = 200
 class ColorTracking(Node):
     def __init__(self, name):
         super().__init__(name)
+        self.escape_attempts = 0  # Track consecutive escapes
+        self.last_escape_time = 0
 
         # ROS2 publishers and subscribers
         self.cmd_vel = self.create_publisher(Twist, 'controller/cmd_vel', 1)
@@ -110,6 +112,24 @@ class ColorTracking(Node):
             twist.angular.z = 0.5
 
         self.cmd_vel.publish(twist)
+
+        #*********** DEBUG - Display mask and centroid **************
+        cv2.circle(current_frame, (centroid_x, centroid_y), 5, (0, 255, 0), -1)  #draws a centroid
+        cv2.imshow('Mask', mask)
+        cv2.imshow('Camera', current_frame)
+        cv2.waitKey(1)  #refresh display
+        #This might show a blank if the bounds are wrong. Better to test 
+        #*********** END DEBUG ****************
+
+        #Check escape attempts
+        if escape_direction is not None:
+            self.escape_attempts += 1
+            self.last_escape_time = time.time()
+            if self.escape_attempts > 3:  # Stuck after 3 attempts
+                twist.angular.z = 1.0 * (-1 if escape_direction == "left" else 1)  # Hard turn
+            else:
+                self.escape_attempts = 0  # Reset counter
+                
 
     def get_color_centroid(self, mask):
         """ Compute the centroid of the largest detected contour. """
