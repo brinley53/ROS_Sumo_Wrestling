@@ -27,7 +27,7 @@ START_SPEED = 0.3  # New start speed for forward movement and drifting
 #DRIFT_DURATION = 1.5  # Time to complete the drift
 FORWARD_DISTANCE = 0.3  # Distance to move forward (meters)
 
-END_DISTANCE = 0.1
+END_DISTANCE = 0.1 # Minimum distance from green wall (meters) (4 in ~ 0.1 m)
 FORWARD_SPEED = 0.2
 COLOR_TOLERANCE = 20  # For color detection centering
 
